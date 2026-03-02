@@ -1,4 +1,19 @@
 node_modules/
 dist/
 *.tsbuildinfo
+
+# OS
+.DS_Store
+
+# Environment
+.env
+.env.*
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Claude Code
 .claude/

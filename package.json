@@ -34,6 +34,16 @@
   "files": [
     "dist"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/robertdp/tuile.git"
+  },
+  "author": "Robert Porter",
+  "keywords": ["tui", "terminal", "cli", "jsx", "reactive"],
+  "engines": {
+    "node": ">=20"
+  },
+  "sideEffects": false,
   "license": "MIT",
   "dependencies": {
     "get-east-asian-width": "^1.5.0",
