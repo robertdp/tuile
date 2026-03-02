@@ -1,5 +1,4 @@
 import { defineConfig } from "vitest/config";
-import path from "path";
 
 export default defineConfig({
   test: {
@@ -7,7 +6,8 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      "tuile/jsx-runtime": path.resolve(__dirname, "src/jsx-runtime.ts"),
+      "tuile/jsx-runtime": new URL("src/jsx-runtime.ts", import.meta.url)
+        .pathname,
     },
   },
 });
