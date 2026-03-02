@@ -6,12 +6,12 @@
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "noEmit": true,
     "jsx": "react-jsx",
     "jsxImportSource": "tuile",
     "paths": {
       "tuile/jsx-runtime": ["../src/jsx-runtime.ts"]
-    }
+    },
+    "noEmit": true
   },
   "include": [".", "../src"]
 }
