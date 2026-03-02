@@ -4,7 +4,20 @@ import type { Direction, Align, Justify, SizeValue } from "../element/types.js";
 import { resolveEdges, resolveSize, borderSize, measureText } from "./constraints.js";
 
 // ---------------------------------------------------------------------------
-// Layout Engine — 2-pass constraint-based layout
+// Layout Engine — multi-pass constraint-based layout
+//
+// 1. Build/sync layout tree from render tree (with WeakMap caching)
+// 2. Top-down: distribute max-width/max-height constraints to children
+// 3. Bottom-up: resolve intrinsic sizes from leaf nodes upward
+// 4. Top-down: flex distribution (grow/shrink), percentage re-resolution,
+//    cross-axis stretch, then min/max clamping
+// 5. Top-down: reflow text that no longer fits after flex changed widths
+//    (only grows auto-sized containers — shrinking would undo flex)
+// 6. Top-down: position children with justification and alignment
+//
+// Portals are out-of-flow: they receive root constraints in pass 2,
+// are excluded from parent size aggregation in pass 3, and are
+// positioned at (0,0) for separate painting.
 // ---------------------------------------------------------------------------
 
 /**
@@ -37,7 +50,11 @@ export function computeLayout(root: RenderNode, termWidth: number, termHeight: n
 // Build / sync layout tree from render tree
 // ---------------------------------------------------------------------------
 
-/** Cache: RenderNode → its most recent LayoutNode */
+/** Cache: RenderNode → its most recent LayoutNode.
+ * Reuses LayoutNode objects across frames to reduce allocation pressure.
+ * The generation counter determines staleness — only nodes from the
+ * current generation are valid. WeakMap keys ensure disposed RenderNodes
+ * don't leak layout data. */
 const layoutCache = new WeakMap<RenderNode, LayoutNode>();
 
 /** Monotonically increasing generation counter for cache invalidation */
@@ -286,11 +303,12 @@ function distributeFlex(node: LayoutNode): void {
   // Filter to in-flow children only (portals are out-of-flow)
   const inFlowChildren = node.children.filter(c => c.renderNode.type !== PORTAL);
 
-  // Re-resolve percentage-based sizes against actual parent dimensions.
-  // Pass 2 resolved percentages against constraints.maxWidth/maxHeight, which
-  // may exceed the actual dimensions after flex distribution (e.g. a "100%"-wide
-  // child inside a flex-shrunk container). Re-resolving here mirrors CSS where
-  // percentage sizes resolve against the containing block's used dimensions.
+  // Double percentage resolution: pass 3 (size resolution) resolved
+  // percentages against the constraint max, but flex may have shrunk the
+  // parent below that max. Re-resolve against the parent's actual inner
+  // dimensions so a "100%"-wide child in a flex-shrunk container sizes
+  // correctly. Mirrors CSS where percentages resolve against the
+  // containing block's used (not available) dimensions.
   for (const child of inFlowChildren) {
     const cp = child.renderNode.props;
     if (typeof cp.width === "string" && cp.width.endsWith("%")) {
@@ -499,7 +517,7 @@ function reflowText(node: LayoutNode): boolean {
     }
 
     const totalHeight = contentHeight + padding.top + padding.bottom + border.top + border.bottom;
-    // Only grow — shrinking would undo flex-distributed heights from pass 3,
+    // Only grow — shrinking would undo flex-distributed heights from pass 4,
     // since auto-sized containers can't distinguish intrinsic vs flex height.
     if (totalHeight > node.layout.height) {
       node.layout.height = totalHeight;

@@ -6,6 +6,19 @@ import { getActiveInstance } from "../instance.js";
 
 // ---------------------------------------------------------------------------
 // Context — dependency injection through the component tree
+//
+// Context values are captured at mount time via a push/pop stack during
+// the synchronous mount() traversal. The Provider pushes a value before
+// mounting children and pops it after, so useContext reads the top of the
+// stack at the point the consumer component executes.
+//
+// Because values are captured once (at mount), passing a plain object
+// gives consumers a static snapshot. For reactive context, pass a signal
+// as the value and read .value in consumers — the signal reference is
+// stable, and reading .value inside effects creates subscriptions.
+//
+// Each render instance has its own context stacks, providing full
+// isolation between concurrent render() calls (e.g. in tests).
 // ---------------------------------------------------------------------------
 
 export interface Context<T> {

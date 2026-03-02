@@ -1,5 +1,19 @@
 // ---------------------------------------------------------------------------
-// Mouse Input — SGR mode parsing
+// Mouse Input — SGR extended mode parsing
+//
+// SGR format: ESC [ < Cb ; Cx ; Cy M (press) or m (release)
+// where Cb encodes button + modifiers as a bitmask:
+//   bits 0-1: button (0=left, 1=middle, 2=right, 3=release)
+//   bit 2:    Shift
+//   bit 3:    Alt/Meta
+//   bit 4:    Ctrl
+//   bit 5:    motion (drag event)
+//   bit 6:    scroll (button bits 0-1: 0=up, 1=down)
+//
+// Cx/Cy are 1-based; converted to 0-based on output.
+//
+// SGR mode (1006) is used over legacy X10 mode because it supports
+// coordinates beyond column 223 and distinguishes press from release.
 // ---------------------------------------------------------------------------
 
 export interface MouseEvent {

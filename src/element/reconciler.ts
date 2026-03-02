@@ -12,7 +12,12 @@ import {
   setActiveInstance,
 } from "../instance.js";
 
-/** Element type symbols */
+/**
+ * Element type symbols.
+ * DYNAMIC is used by control-flow components (Show/For/Switch) — its
+ * `setup` prop receives the RenderNode and manages children imperatively
+ * via mount/unmount, sidestepping the normal declarative child mounting.
+ */
 export const BOX = Symbol.for("tuile.box");
 export const TEXT = Symbol.for("tuile.text");
 export const PORTAL = Symbol.for("tuile.portal");
@@ -137,7 +142,9 @@ export function mount(element: TuileElement | TuileChild, parent: RenderNode | n
     return result;
   } finally {
     state.depth--;
-    // Flush post-mount callbacks when top-level mount completes
+    // Flush post-mount callbacks when the outermost mount() completes.
+    // depth tracking ensures nested mount() calls (e.g. from control-flow
+    // components) don't flush prematurely — only the top-level caller flushes.
     if (isTopLevel && state.queue.length > 0) {
       const queue = state.queue;
       state.queue = [];
@@ -185,7 +192,11 @@ function mountInner(element: TuileElement | TuileChild, parent: RenderNode | nul
       ...(el.children.length > 0 ? { children: el.children.length === 1 ? el.children[0] : el.children } : {}),
     };
 
-    // Create a wrapper node for ownership tracking
+    // Create a wrapper FRAGMENT node to serve as the ownership scope
+    // for onCleanup/onMount registrations. The component function runs
+    // with currentOwner set to this node. After the component returns,
+    // any disposers registered via onCleanup are transferred to the
+    // actual child node that the component produced.
     const ownerNode: RenderNode = {
       type: FRAGMENT,
       props: {},
@@ -246,7 +257,9 @@ function mountInner(element: TuileElement | TuileChild, parent: RenderNode | nul
   node.root = parent ? parent.root : node;
   storeNodeInstance(node);
 
-  // Set up props — reactive props get effects
+  // Set up props — signal-valued props are bound via effects so
+  // that changes to the signal automatically update the render node
+  // and trigger a dirty notification (re-layout + re-paint).
   for (const [key, value] of Object.entries(el.props)) {
     if (key === "children" || key === "ref") continue;
     if (isSignal(value)) {

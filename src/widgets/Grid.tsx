@@ -164,10 +164,18 @@ function getCellAt(cells: CellInfo[], row: number, col: number): CellInfo | null
 // ---------------------------------------------------------------------------
 
 /**
- * Paint internal grid lines: horizontal separators between rows, vertical
- * separators between columns, and proper junction characters where lines
- * meet the outer border or each other. Span-aware — skips separators that
- * a spanning cell covers.
+ * Paint internal grid lines via the onPaint callback (after the outer
+ * border is already drawn by the normal Box border painting).
+ *
+ * Draws horizontal separators between rows, vertical separators between
+ * columns, and proper junction characters (T-pieces, crosses) where
+ * lines meet the outer border or each other.
+ *
+ * Span-aware: when a cell spans multiple columns, the vertical
+ * separators it covers are suppressed and junctions degrade gracefully
+ * (cross → T-piece → horizontal line). Column positions are derived
+ * from actual cell layout coordinates rather than computed from track
+ * definitions, so they stay correct after flex distribution.
  */
 function paintGridBorders(
   ctx: PaintContext,

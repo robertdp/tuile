@@ -55,7 +55,10 @@ export function TextInput(props: TextInputProps): TuileElement {
   } = props;
 
   const text = controlledValue ?? signal(defaultValue);
-  // cursorPos is a grapheme index (not a UTF-16 code unit index)
+  // Cursor position is tracked as a grapheme index, not a UTF-16 code
+  // unit offset. This ensures cursor movement is correct with multi-byte
+  // characters (emoji, CJK, combining marks) — one arrow press = one
+  // visible character, regardless of how many code units it spans.
   const cursorPos = signal(graphemes(text.peek()).length);
   const focused = signal(false);
 

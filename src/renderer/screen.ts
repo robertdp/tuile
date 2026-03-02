@@ -46,6 +46,20 @@ function installProcessHandlers(): void {
 
 // ---------------------------------------------------------------------------
 // Screen Manager — render loop & terminal management
+//
+// Render loop phases:
+//   1. Mount element tree into a RenderNode tree (once, at startup)
+//   2. On dirty notification (signal change → markDirty), schedule a frame
+//   3. Compute layout (may loop up to 4 passes if onLayout callbacks
+//      change signals that affect sizing — layout convergence loop)
+//   4. Paint the layout tree into a CellBuffer (portals painted in a
+//      second pass, sorted by zIndex ascending)
+//   5. Diff against the previous buffer and write ANSI to stdout
+//   6. Swap buffers
+//
+// Frame scheduling uses queueMicrotask when the frame budget allows
+// (batches multiple signal changes in the same tick), falling back to
+// setTimeout when throttled by the fps cap.
 // ---------------------------------------------------------------------------
 
 export interface ScreenOptions {

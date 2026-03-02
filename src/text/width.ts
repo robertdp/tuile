@@ -1,5 +1,12 @@
 // ---------------------------------------------------------------------------
 // Unicode-aware text width utilities
+//
+// Terminal display width differs from string length: CJK ideographs and
+// most emoji occupy 2 columns, combining marks occupy 0. The Unicode
+// East_Asian_Width property defines "Ambiguous" characters (e.g. °, →)
+// whose width depends on locale — 1 column on Western terminals, 2 on
+// CJK-locale terminals. Call detectAmbiguousWidth() before render() to
+// probe the terminal's actual behavior.
 // ---------------------------------------------------------------------------
 
 import stringWidthLib from "string-width";
@@ -54,7 +61,8 @@ export async function detectAmbiguousWidth(options?: {
   }
 
   // Probe character: ° (U+00B0 DEGREE SIGN) — East_Asian_Width=Ambiguous.
-  // Renders as 1 column on Western terminals, 2 on CJK-locale terminals.
+  // Chosen for being visually inconspicuous if briefly visible. Renders as
+  // 1 column on Western terminals, 2 on CJK-locale terminals.
   const PROBE = "\u00b0";
 
   const wasRaw = stdin.isRaw;

@@ -3,6 +3,20 @@ import { graphemeWidth } from "../text/width.js";
 
 // ---------------------------------------------------------------------------
 // Cell Buffer — 2D grid of styled characters
+//
+// Each terminal column maps to one Cell. Wide characters (CJK, emoji)
+// occupy two columns: the primary cell holds the grapheme, and the next
+// cell is a "continuation" cell with char === "". The continuation is
+// never emitted directly — the differ skips it and relies on the terminal
+// advancing the cursor by two after the primary.
+//
+// When writing over part of a wide character, the orphaned half must be
+// cleaned up to avoid rendering artifacts:
+//   - Overwriting a continuation → clear the primary (cx-1) to " "
+//   - Overwriting a primary → clear the continuation (cx+1) to " "
+//   - Writing a wide char over another's continuation → clear cx+2
+// A wide character at the right edge that doesn't fit is replaced with
+// a space to prevent cursor overflow.
 // ---------------------------------------------------------------------------
 
 /** Module-level Intl.Segmenter singleton for grapheme-aware text iteration */

@@ -5,6 +5,20 @@ import { graphemeWidth } from "../text/width.js";
 
 // ---------------------------------------------------------------------------
 // Hybrid Run-based Differ
+//
+// Compares two CellBuffers and emits minimal ANSI to transform the terminal.
+// Strategy per row:
+//   1. Skip identical rows entirely (fast path).
+//   2. Find contiguous runs of changed cells.
+//   3. Coalesce nearby runs (gap < 3 cells) to avoid cursor-movement overhead.
+//   4. If >60% of the row changed, fall back to a single full-line write
+//      (cheaper than many cursor jumps).
+//   5. Otherwise, emit each run individually with cursor positioning.
+//
+// Wide characters (CJK, emoji) occupy two cells: a primary cell with the
+// grapheme and a continuation cell (char === ""). When a changed run starts
+// on a continuation cell, we back up to include the primary so the full
+// character is re-emitted and the cursor advances correctly.
 // ---------------------------------------------------------------------------
 
 /** Coalesce threshold: merge runs separated by fewer than this many unchanged cells */
@@ -175,9 +189,16 @@ function colorKey(color: import("../element/types.js").Color | null): string {
 
 /**
  * Render a range of cells [start, end) to an ANSI string.
- * Tracks style state to emit minimal SGR changes.
- * Skips valid continuation cells (char === "") for wide characters.
- * Orphaned continuations are emitted as spaces to prevent cursor misalignment.
+ *
+ * Tracks cumulative SGR state to emit only the attributes that differ
+ * from the previous cell. Bold and dim share SGR 22 as their off code,
+ * so turning off either requires resetting both and re-applying the
+ * surviving attribute.
+ *
+ * Wide-character continuation cells (char === "") are skipped when they
+ * follow a valid primary cell. Orphaned continuations (left behind when
+ * a wide character is partially overwritten) are emitted as spaces to
+ * prevent cursor misalignment.
  */
 function renderCells(cells: Cell[], start: number, end: number): string {
   const parts: string[] = [];

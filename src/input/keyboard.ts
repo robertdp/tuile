@@ -1,5 +1,19 @@
 // ---------------------------------------------------------------------------
 // Keyboard Input — raw mode stdin parsing
+//
+// Parses raw bytes from stdin (in raw mode) into structured KeyEvents.
+// Supports:
+//   - CSI sequences (ESC [ params final): arrow keys, function keys,
+//     insert/delete/home/end/pgup/pgdn. Modifier encoding follows
+//     xterm convention: parameter 2 = 1 + bitmask where bit 0 = Shift,
+//     bit 1 = Alt, bit 2 = Ctrl (e.g. modifier 6 = Ctrl+Shift).
+//   - SS3 sequences (ESC O final): historical terminal compatibility
+//     for arrow keys and F1-F4 on some emulators.
+//   - Bracketed paste (ESC[200~ ... ESC[201~): captured as a single
+//     "paste" event. If the end marker spans a chunk boundary,
+//     ParseState buffers across data events.
+//   - Alt+key (ESC followed by a character).
+//   - Control characters (0x00-0x1F) mapped to named keys.
 // ---------------------------------------------------------------------------
 
 export interface KeyEvent {

@@ -1,5 +1,11 @@
 // ---------------------------------------------------------------------------
 // Easing Functions
+//
+// Standard easing curves following the CSS Easing Functions specification.
+// Polynomial easings (quad/cubic/quart) use direct polynomial evaluation.
+// Bounce uses the industry-standard constants (n1=7.5625, d1=2.75) from
+// the penner easing equations. Back overshoot constant (c1=1.70158)
+// produces ~10% overshoot, matching the CSS back easing specification.
 // ---------------------------------------------------------------------------
 
 export type EasingFn = (t: number) => number;
@@ -152,6 +158,10 @@ export function resolveEasing(easing: EasingName | EasingFn): EasingFn {
 /**
  * Create a cubic-bezier easing function.
  * Control points: (0,0) → (x1,y1) → (x2,y2) → (1,1)
+ *
+ * Uses Newton-Raphson iteration (up to 8 steps) to invert the
+ * x(t) curve, then evaluates y at the solved t. Converges in
+ * 2-3 iterations for typical easing curves.
  */
 export function cubicBezier(x1: number, y1: number, x2: number, y2: number): EasingFn {
   // Newton-Raphson iteration to find t for a given x

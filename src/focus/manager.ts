@@ -7,6 +7,26 @@ import type { ReadSignal, WriteSignal } from "../reactive/signal.js";
 
 // ---------------------------------------------------------------------------
 // Focus Management — tree-based with composable focus groups
+//
+// The focus tree mirrors the layout tree's focusable subset. Each
+// focusable element (tabIndex >= 0) becomes a FocusEntry, and elements
+// with focusGroup/focusTrap props become FocusGroups that contain their
+// own child entries.
+//
+// Navigation model:
+//   - Tab/Shift+Tab: advance through entries in tree order at root level,
+//     or cycle within a group if tabCycles is true. Groups with
+//     tabCycles=false are exited on Tab, advancing to the next sibling.
+//   - Arrow keys: navigate within the active focus group (vertical or
+//     horizontal, configurable per group).
+//   - Escape: exit the active group (unless exitKey is false = trap).
+//
+// Groups track lastFocusedIndex to restore position when re-entering
+// via forward Tab. Backward entry (Shift+Tab) always starts at the
+// last child — the asymmetry avoids confusing jumps when tabbing back.
+//
+// Focus identity is tracked by RenderNode reference (stable across
+// layout recomputation), not LayoutNode (recreated each frame).
 // ---------------------------------------------------------------------------
 
 /** Resolved options for a focus group (all fields required) */

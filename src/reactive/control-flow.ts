@@ -7,6 +7,23 @@ import { readValue } from "./utils.js";
 
 // ---------------------------------------------------------------------------
 // Control Flow Components (Solid-style)
+//
+// These components manage subtree mounting/unmounting imperatively via
+// DYNAMIC elements, keeping the rest of the framework declarative.
+//
+// Key design decisions:
+//   - Show: children are unmounted and re-mounted on each toggle, not
+//     hidden. This resets component state but avoids retaining disposed
+//     subtrees in memory.
+//   - For: uses identity-based reconciliation (item reference or key
+//     function) to reuse mounted nodes across list updates. Child
+//     render functions run via runUnscoped() so their effects survive
+//     the parent For effect's re-runs.
+//   - Switch: Match elements are inspected as data descriptors, not
+//     mounted as components. Only the winning branch's children are
+//     actually mounted.
+//   - ErrorBoundary: catches errors thrown during mount() only — runtime
+//     errors in effects or event handlers are not caught.
 // ---------------------------------------------------------------------------
 
 type MaybeSignal<T> = T | ReadSignal<T> | WriteSignal<T>;
@@ -141,7 +158,10 @@ export function For<T>(props: ForProps<T>): TuileElement {
         } else {
           indexSignal = signal(i);
           // Run outside the For effect's ownership scope so that
-          // computeds/effects created by renderFn survive re-runs
+          // computeds/effects created by renderFn survive the parent
+          // effect's re-execution (which disposes owned children).
+          // Without this, adding a new item would dispose all existing
+          // item components.
           child = runUnscoped(() => {
             const el = renderFn(item, indexSignal!);
             return mount(el, node);

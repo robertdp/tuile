@@ -9,6 +9,18 @@ import { getActiveInstance } from "../instance.js";
 
 // ---------------------------------------------------------------------------
 // Event System — bubbling, hit testing, global handlers
+//
+// Key events bubble from the focused RenderNode up through parents to root,
+// then fall through to global handlers.
+//
+// Mouse events use hit testing against the layout tree. Portals are tested
+// first (highest zIndex first, matching the visual stacking order), then the
+// normal flow tree. Within each subtree, children are tested in reverse
+// zIndex order (highest first) so visually topmost elements receive events.
+//
+// Scroll containers offset hit-test coordinates: screen space → content
+// space by adding the scroll offset, since children are positioned in
+// content coordinates while the mouse reports screen coordinates.
 // ---------------------------------------------------------------------------
 
 /** Handler handled the event — stop bubbling */

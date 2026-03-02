@@ -17,7 +17,7 @@ export interface TweenOptions {
   easing?: EasingName | EasingFn;
   /** Delay before starting (ms) */
   delay?: number;
-  /** Number of times to repeat (0 = play once, Infinity = loop forever) */
+  /** Number of additional plays after the first (0 = play once, 1 = play twice, Infinity = loop forever) */
   repeat?: number;
   /** Reverse direction on each repeat */
   yoyo?: boolean;
@@ -244,7 +244,9 @@ export function spring(initialValue: number, options: SpringOptions = {}): Sprin
       return;
     }
 
-    // Cap dt to avoid explosion after long pauses
+    // Cap dt to 64ms (~15fps) to prevent instability when the event loop
+    // was blocked or the tab was backgrounded. Without the cap, a large
+    // accumulated dt produces extreme spring forces that overshoot wildly.
     const dt = Math.min((timestamp - lastTimestamp) / 1000, 0.064);
     lastTimestamp = timestamp;
 

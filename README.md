@@ -16,12 +16,6 @@ Build terminal user interfaces with declarative JSX and a reactivity model inspi
 - **Portals** — render outside the parent tree (modals, overlays)
 - **Built-in widgets** — text input, select, checkbox, progress bar, spinner, table, grid
 
-## Install
-
-```sh
-npm install tuile
-```
-
 ## Quick start
 
 Configure your `tsconfig.json` for JSX:
@@ -45,7 +39,7 @@ setInterval(() => count.value++, 1000);
 
 render(
   <Box padding={1}>
-    <Text bold color="#7C6FFF">Count: {() => count.value}</Text>
+    <Text bold color="#7C6FFF">Count: {count}</Text>
   </Box>
 );
 ```
@@ -94,20 +88,20 @@ function Counter() {
 
   return (
     <Box padding={1}>
-      <Text>Count: {() => count.value}</Text>
+      <Text>Count: {count}</Text>
     </Box>
   );
 }
 ```
 
-Reactive expressions in JSX must be wrapped in a function (`{() => ...}`), not passed as bare values.
+Pass signals directly as JSX children — the framework tracks dependencies automatically. For derived values, use `computed`.
 
 ### Layout
 
 `Box` is the layout primitive. It uses a flexbox model with `direction`, `padding`, `gap`, `flexGrow`, `flexShrink`, and more.
 
 ```tsx
-<Box direction="row" gap={1} padding={1}>
+<Box direction="horizontal" gap={1} padding={1}>
   <Box flexGrow={1}>
     <Text>Left</Text>
   </Box>
@@ -134,28 +128,31 @@ Colors accept named colors (`"red"`, `"cyan"`), hex strings (`"#FF5252"`), 256-p
 Conditional and list rendering with reactive primitives:
 
 ```tsx
-import { Show, For, Switch, Match, signal } from "tuile";
+import { Show, For, Switch, Match, signal, computed } from "tuile";
 
 const visible = signal(true);
 const items = signal(["one", "two", "three"]);
 const mode = signal<"a" | "b">("a");
 
 // Conditional
-<Show when={() => visible.value}>
+<Show when={visible}>
   <Text>Visible</Text>
 </Show>
 
 // Lists (identity-based reconciliation preserves component state)
-<For each={() => items.value}>
-  {(item, index) => <Text>{() => `${index.value}: ${item}`}</Text>}
+<For each={items}>
+  {(item) => <Text>{item}</Text>}
 </For>
 
-// Multi-branch
+// Multi-branch (when takes a signal or computed)
+const isA = computed(() => mode.value === "a");
+const isB = computed(() => mode.value === "b");
+
 <Switch>
-  <Match when={() => mode.value === "a"}>
+  <Match when={isA}>
     <Text>Mode A</Text>
   </Match>
-  <Match when={() => mode.value === "b"}>
+  <Match when={isB}>
     <Text>Mode B</Text>
   </Match>
 </Switch>
@@ -197,7 +194,7 @@ Handle keyboard and mouse events on any `Box`:
     if (event.key === "q") process.exit(0);
     return false; // false = propagate, true = handled
   }}
-  onMouseDown={(event) => {
+  onClick={(event) => {
     console.log(`Clicked at ${event.x}, ${event.y}`);
     return true;
   }}
@@ -223,7 +220,7 @@ Handle keyboard and mouse events on any `Box`:
   <Box tabIndex={0}><Text>Item 3</Text></Box>
 </Box>
 
-// Focus trap (Tab cycles within, Escape exits)
+// Focus trap (Tab cycles within, focus cannot leave)
 <Box focusTrap>
   <Box tabIndex={0}><Text>Trapped 1</Text></Box>
   <Box tabIndex={0}><Text>Trapped 2</Text></Box>
@@ -239,7 +236,7 @@ import { ScrollBox } from "tuile";
 
 <ScrollBox height={10} direction="vertical" tabIndex={0}>
   {/* Content taller than 10 rows scrolls */}
-  <For each={() => items.value}>
+  <For each={items}>
     {(item) => <Text>{item}</Text>}
   </For>
 </ScrollBox>
@@ -250,20 +247,19 @@ import { ScrollBox } from "tuile";
 Tween values over time or use spring physics:
 
 ```tsx
-import { signal, animate, spring } from "tuile";
+import { animate, spring } from "tuile";
 
-// Tween with easing
-const progress = signal(0);
-animate(0, 100, {
+// Tween with easing — returns a control object with a .value signal
+const tween = animate(0, 100, {
   duration: 1000,
   easing: "ease-out-cubic",
-  onUpdate: (v) => (progress.value = v),
 });
+// tween.value is a ReadSignal<number> that updates each frame
 
 // Spring physics
-const position = signal(0);
-const sp = spring(position, { stiffness: 170, damping: 26 });
-sp.target = 100; // animates toward target
+const sp = spring(0, { stiffness: 170, damping: 26 });
+sp.setTarget(100); // animates toward target
+// sp.value is a ReadSignal<number>
 ```
 
 ### Portals

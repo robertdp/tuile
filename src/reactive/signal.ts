@@ -9,7 +9,19 @@
 
 // --- Internal types ---
 
-/** Computed node states */
+/**
+ * Computed node states — three-level dirty tracking to avoid redundant
+ * re-evaluations in diamond dependency graphs.
+ *
+ * CLEAN: Value is current. No work needed.
+ * CHECK: A transitive dependency changed, but the direct dependency may
+ *        not have produced a new value. Resolve by pulling upstream and
+ *        comparing dependency versions before re-evaluating.
+ * DIRTY: A direct dependency changed value. Must re-evaluate.
+ *
+ * CHECK prevents cascading re-evaluations when an intermediate computed
+ * re-runs but produces the same value (common in derived state).
+ */
 const CLEAN: number = 0;
 const CHECK: number = 1;
 const DIRTY: number = 2;
@@ -52,7 +64,12 @@ const signalStateMap = new WeakMap<object, SignalState<any>>();
 type CleanupFn = () => void;
 type DisposeFn = () => void;
 
-/** Currently executing effect's child registration function */
+/**
+ * Currently executing effect's child registration function.
+ * Effects and computeds created while this is set are "owned" by
+ * the parent effect — disposed automatically when the parent
+ * re-runs or is disposed. Forms an ownership tree for cleanup.
+ */
 let currentEffectScope: ((dispose: DisposeFn) => void) | null = null;
 
 // --- Helpers ---
@@ -201,6 +218,9 @@ export function computed<T>(fn: () => T): ComputedSignal<T> {
 
   let status = DIRTY;
   let disposed = false;
+  // Version snapshot of each dependency after the last evaluation.
+  // Used during CHECK resolution to detect whether any dependency
+  // actually changed value, avoiding a full re-evaluation.
   let depVersions = new Map<SignalState<any>, number>();
 
   function evaluate(): void {
